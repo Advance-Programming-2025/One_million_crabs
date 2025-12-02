@@ -15,7 +15,8 @@ const N_CELLS: usize = 5; // da cambiare in base al pianeta che scegliamo
 pub struct MyPlanet;
 
 impl PlanetAI for MyPlanet {
-    fn handle_orchestrator_msg(&mut self, state: &mut PlanetState, msg: OrchestratorToPlanet) -> Option<PlanetToOrchestrator> {
+
+    fn handle_orchestrator_msg(&mut self, state: &mut PlanetState, generator: &Generator, combinator: &Combinator, msg: OrchestratorToPlanet) -> Option<PlanetToOrchestrator> {
         match msg {
             OrchestratorToPlanet::InternalStateRequest(..) => {
                 Some(PlanetToOrchestrator::InternalStateResponse {
@@ -40,7 +41,7 @@ impl PlanetAI for MyPlanet {
         }
     }
 
-    fn handle_explorer_msg(&mut self, state: &mut PlanetState, msg: ExplorerToPlanet) -> Option<PlanetToExplorer> {
+    fn handle_explorer_msg(&mut self, state: &mut PlanetState, generator: &Generator, combinator: &Combinator, msg: ExplorerToPlanet) -> Option<PlanetToExplorer> {
         match msg {
             ExplorerToPlanet::InternalStateRequest { explorer_id: _ } => {
                 Some(PlanetToExplorer::InternalStateResponse {
@@ -69,8 +70,8 @@ impl PlanetAI for MyPlanet {
                     combination_list: None, //TODO come per SupportedResourceResponse
                 })
             }
-            ExplorerToPlanet::GenerateResourceRequest { explorer_id, msg } => {
-                let requested_resource = msg.resource; //TODO come accedo a msg.resource dato che è privato
+            ExplorerToPlanet::GenerateResourceRequest { explorer_id, resource } => {
+                let requested_resource = resource; //TODO come accedo a msg.resource dato che è privato
                 // controllo se c'è una cella carica
                 let cell_idx = (0..N_CELLS).find(|&i| state.cell(i).is_charged());
                 if let Some(cell_idx) = cell_idx{ // se c'è una cella carica
@@ -78,10 +79,10 @@ impl PlanetAI for MyPlanet {
                     let cell = state.cell_mut(cell_idx);
                     // pattern matching per generare la risorsa corretta
                     let generated_resource = match requested_resource {
-                        BasicResourceType::Carbon => state.generator.make_carbon(cell).map(BasicResource::Carbon), // make_ controlla già se la risorsa è presente in generator
-                        BasicResourceType::Silicon => state.generator.make_silicon(cell).map(BasicResource::Silicon),
-                        BasicResourceType::Oxygen => state.generator.make_oxygen(cell).map(BasicResource::Oxygen),
-                        BasicResourceType::Hydrogen => state.generator.make_hydrogen(cell).map(BasicResource::Hydrogen),
+                        BasicResourceType::Carbon => generator.make_carbon(cell).map(BasicResource::Carbon), // make_ controlla già se la risorsa è presente in generator
+                        BasicResourceType::Silicon => generator.make_silicon(cell).map(BasicResource::Silicon),
+                        BasicResourceType::Oxygen => generator.make_oxygen(cell).map(BasicResource::Oxygen),
+                        BasicResourceType::Hydrogen => generator.make_hydrogen(cell).map(BasicResource::Hydrogen),
                     };
                     // verifico il risultato di state.generator.make...
                     match generated_resource {
@@ -110,12 +111,12 @@ impl PlanetAI for MyPlanet {
                     let cell = state.cell_mut(cell_idx);
                     // pattern matching per generare la risorsa corretta
                     let complex_resource = match msg {
-                        ComplexResourceRequest::Water(r1, r2) => { state.combinator.make_water(r1, r2, cell).map(ComplexResource::Water).map_err(|(e, _, _)| {e}) }, // il map_err serve per trasformare l'err in una stringa sola in modo da poter usare il match
-                        ComplexResourceRequest::Diamond(r1, r2) => { state.combinator.make_diamond(r1, r2, cell).map(ComplexResource::Diamond).map_err(|(e, _, _)| {e}) },
-                        ComplexResourceRequest::Life(r1, r2) => { state.combinator.make_life(r1, r2, cell).map(ComplexResource::Life).map_err(|(e, _, _)| {e}) },
-                        ComplexResourceRequest::Robot(r1, r2) => { state.combinator.make_robot(r1, r2, cell).map(ComplexResource::Robot).map_err(|(e, _, _)| {e}) },
-                        ComplexResourceRequest::Dolphin(r1, r2) => { state.combinator.make_dolphin(r1, r2, cell).map(ComplexResource::Dolphin).map_err(|(e, _, _)| {e}) },
-                        ComplexResourceRequest::AIPartner(r1, r2) => { state.combinator.make_aipartner(r1, r2, cell).map(ComplexResource::AIPartner).map_err(|(e, _, _)| {e}) },
+                        ComplexResourceRequest::Water(r1, r2) => { combinator.make_water(r1, r2, cell).map(ComplexResource::Water).map_err(|(e, _, _)| {e}) }, // il map_err serve per trasformare l'err in una stringa sola in modo da poter usare il match
+                        ComplexResourceRequest::Diamond(r1, r2) => { combinator.make_diamond(r1, r2, cell).map(ComplexResource::Diamond).map_err(|(e, _, _)| {e}) },
+                        ComplexResourceRequest::Life(r1, r2) => { combinator.make_life(r1, r2, cell).map(ComplexResource::Life).map_err(|(e, _, _)| {e}) },
+                        ComplexResourceRequest::Robot(r1, r2) => { combinator.make_robot(r1, r2, cell).map(ComplexResource::Robot).map_err(|(e, _, _)| {e}) },
+                        ComplexResourceRequest::Dolphin(r1, r2) => { combinator.make_dolphin(r1, r2, cell).map(ComplexResource::Dolphin).map_err(|(e, _, _)| {e}) },
+                        ComplexResourceRequest::AIPartner(r1, r2) => { combinator.make_aipartner(r1, r2, cell).map(ComplexResource::AIPartner).map_err(|(e, _, _)| {e}) },
                     };
                     // controllo il risultato di complex_resource
                     match complex_resource {
@@ -136,7 +137,7 @@ impl PlanetAI for MyPlanet {
         }
     }
 
-    fn handle_asteroid(&mut self, state: &mut PlanetState) -> Option<Rocket> {
+    fn handle_asteroid(&mut self, state: &mut PlanetState, generator: &Generator, combinator: &Combinator) -> Option<Rocket> {
         state.take_rocket()
     }
 
@@ -145,7 +146,7 @@ impl PlanetAI for MyPlanet {
         // TODO non ho capito bene cosa deve fare planet.ai.start, deve creare il thread o lo fa l'orchestrator?
     }
 
-    fn stop(&mut self) {
+    fn stop(&mut self, state: &PlanetState) {
         println!("Planet AI stopped");
         // TODO stessa cosa di "start"
     }
