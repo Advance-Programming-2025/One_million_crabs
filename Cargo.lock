@@ -3,6 +3,17 @@
 version = 4
 
 [[package]]
+name = "One-million-crabs"
+version = "0.1.0"
+dependencies = [
+ "common-game",
+ "crossbeam-channel",
+ "env_logger",
+ "flexi_logger",
+ "log",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -131,17 +142,6 @@ name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
-
-[[package]]
-name = "crab-rave"
-version = "0.1.0"
-dependencies = [
- "common-game",
- "crossbeam-channel",
- "env_logger",
- "flexi_logger",
- "log",
-]
 
 [[package]]
 name = "crossbeam-channel"
