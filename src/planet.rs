@@ -1,14 +1,14 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::Display;
+//use std::collections::{HashMap, HashSet};
+//use std::fmt::Display;
 //use std::sync::{mpsc, LockResult};
-use crossbeam_channel::{Receiver, Sender, select};
+use crossbeam_channel::{Receiver, Sender};
 // use std::time::SystemTime;
 use common_game::components::planet::{Planet, PlanetAI, PlanetState, PlanetType};
 use common_game::components::resource::BasicResourceType::Carbon;
 use common_game::components::resource::ComplexResourceType;
 use common_game::components::resource::ComplexResourceType::Diamond;
 use common_game::components::resource::{
-    BasicResource, BasicResourceType, Combinator, ComplexResource, ComplexResourceRequest, Dolphin,
+    BasicResource, BasicResourceType, Combinator, ComplexResource, ComplexResourceRequest,
     Generator, GenericResource,
 };
 use common_game::components::rocket::Rocket;
@@ -20,9 +20,8 @@ use common_game::logging::EventType::{
     MessageOrchestratorToPlanet, MessagePlanetToExplorer, MessagePlanetToOrchestrator,
 };
 use common_game::logging::{ActorType, Channel, EventType, LogEvent, Payload};
-use common_game::protocols::messages::OrchestratorToPlanet::Asteroid;
-use crossbeam_channel::internal::SelectHandle;
-use log::max_level;
+//use common_game::protocols::messages::OrchestratorToPlanet::Asteroid;
+//use log::max_level;
 use stacks::{
     get_charged_cell_index, get_free_cell_index, initialize_free_cell_stack,
     peek_charged_cell_index, push_charged_cell, push_free_cell,
@@ -32,6 +31,7 @@ use stacks::{
 ///////////////////////////////////////////////////////////////////////////////////////////
 const RCV_MSG_LOG_CHNL: Channel = Channel::Info; // change this 2 in order to change the channel of the logs
 const ACK_MSG_LOG_CHNL: Channel = Channel::Info;
+
 #[macro_export]
 macro_rules! log_msg {
     ($event:expr, $channel:expr) => {{
@@ -85,8 +85,7 @@ impl CrabRaveConstructor {
                 .collect(),
         );
         payload.insert("Message".to_string(), "New planet created".to_string());
-        //it would be nice to log if the orchestrator is connected but i don't think is possible neither with std::sync nor with crossbeam_channel
-        // without actually send and receive something
+
         //LOG
         let new_planet = Planet::new(
             id,
@@ -117,15 +116,10 @@ impl CrabRaveConstructor {
 // PlanetAI
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-// REMEMBER -> N_CELLS is in energy_stacks.rs mod
-
 pub struct AI;
 
 impl AI {
     fn new() -> Self {
-        // the cell stack needs to be started here
-        // otherwise it would get reset when the AI
-        // gets stopped
         //LOG
         let mut payload = Payload::new();
         payload.insert(String::from("Message"), String::from("New AI created"));
@@ -140,7 +134,7 @@ impl AI {
         );
         log::info!("{}", event);
         //LOG
-        initialize_free_cell_stack(); // REVIEW rimuovere se si sceglie la vecchia implementazione
+        initialize_free_cell_stack();
         Self
     }
 }
@@ -149,8 +143,8 @@ impl PlanetAI for AI {
     fn handle_orchestrator_msg(
         &mut self,
         state: &mut PlanetState,
-        generator: &Generator,
-        combinator: &Combinator,
+        _generator: &Generator,
+        _combinator: &Combinator,
         msg: OrchestratorToPlanet,
     ) -> Option<PlanetToOrchestrator> {
         match msg {
@@ -197,21 +191,10 @@ impl PlanetAI for AI {
                 //LOG
                 Some(PlanetToOrchestrator::InternalStateResponse {
                     planet_id: state.id(),
-                    planet_state: PlanetState::to_dummy(state), // timestamp: SystemTime::now(),
+                    planet_state: PlanetState::to_dummy(state),
                 })
             }
             OrchestratorToPlanet::Sunray(sunray) => {
-                // for i in 0..N_CELLS {
-                //     // non ho trovato un modo per ottenere il vettore, l'unico modo penso sia quello di ciclare
-                //     if !state.cell(i).is_charged() {
-                //         state.cell_mut(i).charge(sunray);
-                //         return Some(PlanetToOrchestrator::SunrayAck {
-                //             planet_id: state.id(),
-                //             // timestamp: SystemTime::now(),
-                //         });
-                //     }
-                // }
-                // None
                 let mut payload_ris = Payload::new();
                 let mut ris = None;
                 if let Some(idx) = get_free_cell_index() {
@@ -292,15 +275,6 @@ impl PlanetAI for AI {
         match msg {
             ExplorerToPlanet::AvailableEnergyCellRequest { explorer_id: id } => {
                 // restituisce la prima cell carica, se c'è
-                // DO NOT REMOVE -> the following commented lines are the old implementation, so do not remove them till the final decision of the implementation
-                // for i in 0..N_CELLS {
-                //     if state.cell(i).is_charged() {
-                //         return Some(PlanetToExplorer::AvailableEnergyCellResponse {
-                //             available_cells: i as u32,
-                //         });
-                //     }
-                // }
-                // None
 
                 let mut payload_ris = Payload::new();
 
@@ -464,14 +438,12 @@ impl PlanetAI for AI {
                 //TODO add log for the response
                 let requested_resource = resource;
                 // controllo se c'è una cella carica
-                // DO NOT REMOVE -> the following commented lines are the old implementation, so do not remove them till the final decision of the implementation
-                // let cell_idx = (0..N_CELLS).find(|&i| state.cell(i).is_charged());
-                // if let Some(cell_idx) = cell_idx {
+
                 if let Some(cell_idx) = get_charged_cell_index() {
                     // se c'è una cella carica
                     // ottengo la cella da passare al generator
                     //TODO add a detailed log (debug)
-                    let cell = state.cell_mut(cell_idx as usize); // TODO remove the "as usize" if using the old implementation of getting the index of energy cell
+                    let cell = state.cell_mut(cell_idx as usize);
                     // pattern matching per generare la risorsa corretta
                     let generated_resource = match requested_resource {
                         BasicResourceType::Carbon => {
@@ -504,12 +476,7 @@ impl PlanetAI for AI {
                     //TODO change this in a error log
                     println!("No available cell found"); // non dovrebbe accadere, si spera che l'explorer chieda se ce ne è una libera
                 }
-                Some(PlanetToExplorer::GenerateResourceResponse {
-                    //TA: TODO ritorno come ho fatto o direttamente None?
-                    //DDC: io terrei cosi', esplicita il fatto che questo sia un caso
-                    //di errore ma comunque atteso. dipende anche dalla spec
-                    resource: None,
-                })
+                Some(PlanetToExplorer::GenerateResourceResponse { resource: None })
             }
             //TODO use explorer_id to send the gen resource to correct Explorer
             ExplorerToPlanet::CombineResourceRequest {
@@ -518,9 +485,6 @@ impl PlanetAI for AI {
             } => {
                 //renamed msg to resouce to be more consistent with generateresourcerequest
                 // searching the index of the first free cell
-                // DO NOT REMOVE -> the following commented lines are the old implementation, so do not remove them till the final decision of the implementation
-                // let cell_idx = (0..N_CELLS).find(|&i| state.cell(i).is_charged());
-                // if let Some(cell_idx) = cell_idx {
                 //LOG
                 let mut payload = Payload::new();
                 payload.insert(
@@ -544,8 +508,7 @@ impl PlanetAI for AI {
                 //LOG
                 // TODO add log of the response
                 if let Some(cell_idx) = get_charged_cell_index() {
-                    let cell = state.cell_mut(cell_idx as usize); // TODO remove the "as usize" if using the old implementation of getting the index of energy cell
-                    // pattern matching to generate the correct resource
+                    let cell = state.cell_mut(cell_idx as usize);
                     let complex_resource: Result<
                         ComplexResource,
                         (String, GenericResource, GenericResource),
@@ -615,7 +578,7 @@ impl PlanetAI for AI {
                             }),
                     };
                     // checking the result of complex_resource
-                    return match complex_resource {
+                    match complex_resource {
                         Ok(resource) => {
                             push_free_cell(cell_idx);
                             Some(PlanetToExplorer::CombineResourceResponse {
@@ -630,7 +593,7 @@ impl PlanetAI for AI {
                                 complex_response: Err(err),
                             })
                         }
-                    };
+                    }
                 } else {
                     //TODO change this to log
                     println!("No available cell found");
@@ -660,11 +623,10 @@ impl PlanetAI for AI {
                             GenericResource::ComplexResources(ComplexResource::Life(r2)),
                         ),
                     };
-                    return Some(PlanetToExplorer::CombineResourceResponse {
+                    Some(PlanetToExplorer::CombineResourceResponse {
                         complex_response: Err(("no available cell".to_string(), ret1, ret2)),
-                    });
+                    })
                 }
-                None
             }
         }
     }
@@ -672,8 +634,8 @@ impl PlanetAI for AI {
     fn handle_asteroid(
         &mut self,
         state: &mut PlanetState,
-        generator: &Generator,
-        combinator: &Combinator,
+        _generator: &Generator,
+        _combinator: &Combinator,
     ) -> Option<Rocket> {
         //if the planet can't build rockets, you're screwed
         //LOG
@@ -740,15 +702,9 @@ impl PlanetAI for AI {
             payload,
         );
         log::info!("{}", event);
-        // TODO non ho capito bene cosa deve fare planet.ai.start, deve creare il thread o lo fa l'orchestrator?
-        // Mi sembra che lo start AI semplicemente dia il via al loop che permette l'AI di gestire le azioni
-        // TODO non so se ha senso mettere l'inizializzazione degli stack qui o se va messa quando creaiamo AI
-        // initialize_free_cell_stack() // TODO remove if the choice is the old implementation
     }
 
     fn stop(&mut self, _state: &PlanetState) {
-        // mismatched names of state
-        //println!("Planet AI stopped");
         let mut payload = Payload::new();
         payload.insert("Message".to_string(), "Planet AI started".to_string());
         let event = LogEvent::new(
@@ -761,7 +717,6 @@ impl PlanetAI for AI {
             payload,
         );
         log::info!("{}", event);
-        // TODO stessa cosa di "start"
     }
 }
 

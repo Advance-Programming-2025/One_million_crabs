@@ -1,4 +1,4 @@
-mod planet;
+pub mod planet;
 use planet::*;
 
 #[cfg(test)]
