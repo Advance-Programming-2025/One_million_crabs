@@ -1,15 +1,8 @@
-//use std::collections::{HashMap, HashSet};
-//use std::fmt::Display;
-//use std::sync::{mpsc, LockResult};
 use crossbeam_channel::{Receiver, Sender};
-// use std::time::SystemTime;
 use common_game::components::planet::{Planet, PlanetAI, PlanetState, PlanetType};
 use common_game::components::resource::BasicResourceType::Carbon;
-use common_game::components::resource::ComplexResourceType;
-//use common_game::components::resource::ComplexResourceType::Diamond;
 use common_game::components::resource::{
-    BasicResource, BasicResourceType, Combinator, ComplexResource, ComplexResourceRequest,
-    Generator, GenericResource,
+    BasicResource, BasicResourceType, Combinator, ComplexResource, ComplexResourceRequest, ComplexResourceType, Generator, GenericResource
 };
 use common_game::components::rocket::Rocket;
 use common_game::protocols::messages::{
@@ -20,8 +13,6 @@ use common_game::logging::EventType::{
     MessageOrchestratorToPlanet, MessagePlanetToExplorer, MessagePlanetToOrchestrator,
 };
 use common_game::logging::{ActorType, Channel, EventType, LogEvent, Payload};
-//use common_game::protocols::messages::OrchestratorToPlanet::Asteroid;
-//use log::max_level;
 use stacks::{
     get_charged_cell_index, get_free_cell_index, initialize_free_cell_stack,
     peek_charged_cell_index, push_charged_cell, push_free_cell,
@@ -271,6 +262,13 @@ impl PlanetAI for AI {
 
                 let mut payload_ris = Payload::new();
 
+                let mut n_available_cells = 0;
+                for i in 0..N_CELLS {
+                    if state.cell(i).is_charged() {
+                        n_available_cells += 1;
+                    }
+                }
+
                 let mut ris = None;
                 if let Some(idx) = peek_charged_cell_index() {
                     payload_ris.insert(
@@ -280,7 +278,7 @@ impl PlanetAI for AI {
                     payload_ris.insert(String::from("Result"), "EnergyCell available".to_string());
                     payload_ris.insert(String::from("EnergyCell index"), format!("{}", idx));
                     ris = Some(PlanetToExplorer::AvailableEnergyCellResponse {
-                        available_cells: idx,
+                        available_cells: n_available_cells,
                     })
                 } else {
                     payload_ris.insert(
