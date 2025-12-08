@@ -57,7 +57,7 @@ impl CrabRaveConstructor {
         let (planet_type, ai, gen_rules, comb_rules, orchestrator_channels, explorer_channels) = (
             PlanetType::D,
             AI::new(),
-            vec![Carbon,Hydrogen,Oxygen,Silicon],
+            vec![Carbon, Hydrogen, Oxygen, Silicon],
             vec![],
             orchestrator_channels,
             explorer_channels,
