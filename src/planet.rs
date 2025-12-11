@@ -181,7 +181,6 @@ impl PlanetAI for OneMillionCrabs {
             }
             OrchestratorToPlanet::Sunray(sunray) => {
                 let mut payload_ris = Payload::new();
-                let mut ris = None;
                 if let Some(idx) = get_free_cell_index() {
                     state.cell_mut(idx as usize).charge(sunray);
                     push_charged_cell(idx);
@@ -193,10 +192,6 @@ impl PlanetAI for OneMillionCrabs {
                         String::from("Response data"),
                         format!("planet_id: {}", state.id()),
                     );
-
-                    ris = Some(PlanetToOrchestrator::SunrayAck {
-                        planet_id: state.id(),
-                    })
                 } else {
                     payload_ris.insert("Response to".to_string(), "Sunray".to_string());
                     payload_ris.insert(String::from("Result"), String::from("No free cell found"));
@@ -226,7 +221,10 @@ impl PlanetAI for OneMillionCrabs {
                 );
                 log_msg!(event_ris, ACK_MSG_LOG_CHNL);
                 //LOG
-                ris
+
+                Some(PlanetToOrchestrator::SunrayAck {
+                    planet_id: state.id(),
+                })
             }
             _ => {
                 //LOG TODO add more information
