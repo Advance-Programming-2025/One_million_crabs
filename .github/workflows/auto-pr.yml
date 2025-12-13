@@ -23,3 +23,4 @@ jobs:
           destination_branch: main
           pr_title: "Auto-PR: dev → main"
           pr_body: "Automatic PR to merge dev into main."
+          github_token: ${{ secrets.ACTION_PAT }}
