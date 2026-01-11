@@ -25,5 +25,5 @@ jobs:
           MERGE_METHOD: merge
           MERGE_LABELS: ""
           LOG: info
-          MERGE_RETRIES: "3"
-          MERGE_RETRY_SLEEP: "10000"
+          MERGE_RETRIES: "10"
+          MERGE_RETRY_SLEEP: "30000"
