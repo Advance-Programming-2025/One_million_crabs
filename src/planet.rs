@@ -93,7 +93,7 @@ pub fn create_planet(
 ) -> Result<Planet, String> {
     let (planet_type, ai, gen_rules, comb_rules, orchestrator_channels, explorer_channels) = (
         PlanetType::D,
-        OneMillionCrabs::new(),
+        OneMillionCrabs::new(planet_id),
         vec![Carbon, Hydrogen, Oxygen, Silicon],
         vec![],
         (rx_orchestrator, tx_orchestrator),
@@ -137,24 +137,26 @@ pub fn create_planet(
 // PlanetAI
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct OneMillionCrabs;
+pub struct OneMillionCrabs{
+    planet_id: u32,
+}
 
 impl OneMillionCrabs {
-    fn new() -> Self {
+    fn new(planet_id: u32) -> Self {
         //LOG
         let mut payload = Payload::new();
         payload.insert(String::from("Message"), String::from("New AI created"));
         let event = LogEvent::new(
-            Some(Participant::new(ActorType::Planet, 0u32)),
-            Some(Participant::new(ActorType::Planet, 0u32)),
+            Some(Participant::new(ActorType::Planet, planet_id)),
+            Some(Participant::new(ActorType::Planet, planet_id)),
             EventType::InternalPlanetAction,
             INTRNL_ACTN_LOG_CHNL,
             payload,
         );
         log_msg!(event, INTRNL_ACTN_LOG_CHNL);
         //LOG
-        initialize_free_cell_stack(0u32);
-        Self
+        initialize_free_cell_stack(planet_id);
+        Self{planet_id}
     }
 }
 
@@ -1101,7 +1103,7 @@ impl ToString2 for ExplorerToPlanet {
     }
 }
 
-pub const N_CELLS: usize = 5;
+pub const N_CELLS: usize = 5; //TODO è corretto un limite di 5?
 
 /// Module used to implement an energy cell management system based on a stack.
 /// Provides O(1) lookups, charges and discharges.
