@@ -435,7 +435,7 @@ impl PlanetAI for OneMillionCrabs {
                     "_generator"=>"&Generator",
                     "_combinator"=>"&Combinator",
                     "msg" => format!("{:?}", msg);
-                    result = format!("Supported resouces: {:?}", combinator.all_available_recipes())
+                    result = result_str
                 );
                 //LOG
                 res
@@ -448,6 +448,7 @@ impl PlanetAI for OneMillionCrabs {
             } => {
                 //LOG
                 let mut result_str=String::new();
+                let appo=format!("{:?}", resource);
                 //LOG
 
                 let res;
@@ -463,6 +464,7 @@ impl PlanetAI for OneMillionCrabs {
                         (String, GenericResource, GenericResource),
                     > = match resource {
                         ComplexResourceRequest::Water(r1, r2) => {
+                            log_internal_op!(self, "action"=>"combinator.make_water");
                             combinator
                                 .make_water(r1, r2, cell)
                                 .map(ComplexResource::Water)
@@ -477,6 +479,7 @@ impl PlanetAI for OneMillionCrabs {
                                 })
                         }
                         ComplexResourceRequest::Diamond(r1, r2) => {
+                            log_internal_op!(self, "action"=>"combinator.make_diamond");
                             combinator
                                 .make_diamond(r1, r2, cell)
                                 .map(ComplexResource::Diamond)
@@ -489,6 +492,7 @@ impl PlanetAI for OneMillionCrabs {
                                 })
                         }
                         ComplexResourceRequest::Life(r1, r2) => {
+                            log_internal_op!(self, "action"=>"combinator.make_life");
                             combinator
                                 .make_life(r1, r2, cell)
                                 .map(ComplexResource::Life)
@@ -504,6 +508,7 @@ impl PlanetAI for OneMillionCrabs {
                         }
 
                         ComplexResourceRequest::Robot(r1, r2) => {
+                            log_internal_op!(self, "action"=>"combinator.make_robot");
                             combinator
                                 .make_robot(r1, r2, cell)
                                 .map(ComplexResource::Robot)
@@ -519,6 +524,7 @@ impl PlanetAI for OneMillionCrabs {
                         }
 
                         ComplexResourceRequest::Dolphin(r1, r2) => {
+                            log_internal_op!(self, "action"=>"combinator.make_dolphin");
                             combinator
                                 .make_dolphin(r1, r2, cell)
                                 .map(ComplexResource::Dolphin)
@@ -536,6 +542,7 @@ impl PlanetAI for OneMillionCrabs {
                         }
 
                         ComplexResourceRequest::AIPartner(r1, r2) => {
+                            log_internal_op!(self, "action"=>"combinator.make_aipartner");
                             combinator
                                 .make_aipartner(r1, r2, cell)
                                 .map(ComplexResource::AIPartner)
@@ -553,13 +560,11 @@ impl PlanetAI for OneMillionCrabs {
                         }
                     };
 
-                    //LOG
-                    //LOG
-
                     // checking the result of complex_resource
                     match complex_resource {
                         Ok(resource) => {
                             //LOG
+                            result_str=String::from("Complex resource created");
                             //LOG
 
                             push_free_cell(cell_idx, state.id());
@@ -570,6 +575,7 @@ impl PlanetAI for OneMillionCrabs {
                         Err(err) => {
                             push_charged_cell(cell_idx, state.id());
                             //LOG
+                            result_str=format!("Complex resource not created. Error: {:?}", err.2);
                             //LOG
 
                             res = Some(PlanetToExplorer::CombineResourceResponse {
@@ -579,6 +585,7 @@ impl PlanetAI for OneMillionCrabs {
                     }
                 } else {
                     //LOG
+                    result_str=String::from("No energy cell available");
                     //LOG
 
                     let (ret1, ret2) = match resource {
@@ -608,14 +615,23 @@ impl PlanetAI for OneMillionCrabs {
                         ),
                     };
 
-                    //LOG
-                    //LOG
-
                     res = Some(PlanetToExplorer::CombineResourceResponse {
                         complex_response: Err(("no available cell".to_string(), ret1, ret2)),
                     });
                 }
 
+                //LOG
+                log_explorer_to_planet!(
+                    self,
+                    explorer_id,
+                    "handle_explorer_msg()";
+                    "state"=>format!("{:?}",PlanetState::to_dummy(&state)),
+                    "_generator"=>"&Generator",
+                    "_combinator"=>"&Combinator",
+                    "msg" => appo;
+                    result = result_str
+                );
+                //LOG
 
                 res
             }
@@ -644,29 +660,19 @@ impl PlanetAI for OneMillionCrabs {
 
     fn on_start(&mut self, state: &PlanetState, _generator: &Generator, _combinator: &Combinator) {
         //println!("Planet {} AI started", state.id());
-        let mut payload = Payload::new();
-        payload.insert("Message".to_string(), "Planet AI start".to_string());
-        let event = LogEvent::new(
-            Some(Participant::new(ActorType::Orchestrator, 0u32)),
-            Some(Participant::new(ActorType::Planet, state.id())),
-            MessageOrchestratorToPlanet,
-            RCV_MSG_LOG_CHNL,
-            payload,
+        log_orch_to_planet!(
+            self,
+            "on_start()";
+            "state"=>PlanetState::to_dummy(&state),
+            "_generator"=>"&Generator",
+            "_combinator"=>"&Combinator",
+            
         );
-        log_msg!(event, RCV_MSG_LOG_CHNL);
+        todo!()
     }
 
     fn on_stop(&mut self, state: &PlanetState, _generator: &Generator, _combinator: &Combinator) {
-        let mut payload = Payload::new();
-        payload.insert("Message".to_string(), "Planet AI stop".to_string());
-        let event = LogEvent::new(
-            Some(Participant::new(ActorType::Orchestrator, 0u32)),
-            Some(Participant::new(ActorType::Planet, state.id())),
-            MessageOrchestratorToPlanet,
-            RCV_MSG_LOG_CHNL,
-            payload,
-        );
-        log_msg!(event, RCV_MSG_LOG_CHNL);
+        todo!()
     }
 }
 
