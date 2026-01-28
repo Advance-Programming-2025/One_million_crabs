@@ -1019,14 +1019,13 @@ mod stacks {
     #[allow(dead_code)]
     pub fn peek_charged_cell_index(planet_id: u32) -> Option<u32> {
         let charged_cell_stack = CHARGED_CELL_STACK.lock();
-        let res= match charged_cell_stack {
+        match charged_cell_stack {
             Ok(vec) => {
                 vec.last().copied()
             }
             Err(err) => {
                 None
             }
-        };
-        res
+        }
     }
 }
