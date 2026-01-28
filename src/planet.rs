@@ -182,68 +182,65 @@ impl PlanetAI for OneMillionCrabs {
             //LOG
         }
         //if you've already got a rocket ready, use it!
-        else {
-            if state.has_rocket() {
-                //LOG
-                result_str=String::from("Using a rocket to destroy the asteroid");
+        else if state.has_rocket() {
+            //LOG
+            result_str=String::from("Using a rocket to destroy the asteroid");
 
+            log_internal_op!(
+                self,
+                "action"=>"ris=(&mut *state).take_rocket()",
+            );
+            //LOG
+            ris = state.take_rocket();
+        }
+        //try to build a rocket if you have any energy left
+        else {
+            //LOG
+            let mut debug_str=String::new();
+            let mut error_str=String::new();
+            //LOG
+
+            if let Some(idx) = get_charged_cell_index(state.id()) {
+
+                match state.build_rocket(idx as usize) {
+                    Ok(_) => {
+                        //LOG
+                        debug_str=String::from("rocket created");
+
+                        result_str=String::from("Using a rocket to destroy the asteroid");
+                        //LOG
+
+                        push_free_cell(idx, state.id());
+                        //println!("Used a charged cell at index {}, to build a rocket", idx);
+                        ris = state.take_rocket();
+                    }
+                    //build failed, log the error and return none
+                    Err(err) => {
+                        //LOG
+                        debug_str=String::from("cannot create a rocket");
+
+                        error_str=err.to_string();
+
+                        result_str=String::from("No rocket available (cannot create a rocket)");
+                        //LOG
+                        push_charged_cell(idx, state.id());
+                        ris = None;
+                    }
+                }
+                //LOG
                 log_internal_op!(
                     self,
-                    "action"=>"ris=(&mut *state).take_rocket()",
+                    "action"=>format!("(&mut *state).build_rocket({})", idx),
+                    "result"=>result_str,
+                    "error"=>error_str,
                 );
                 //LOG
-                ris = state.take_rocket();
-            }
-            //try to build a rocket if you have any energy left
-            else {
+            } else {
                 //LOG
-                let mut debug_str=String::new();
-                let mut error_str=String::new();
+                result_str=String::from("No rocket available (no free cell found)");
                 //LOG
-
-                if let Some(idx) = get_charged_cell_index(state.id()) {
-
-                    match state.build_rocket(idx as usize) {
-                        Ok(_) => {
-                            //LOG
-                            debug_str=String::from("rocket created");
-
-                            result_str=String::from("Using a rocket to destroy the asteroid");
-                            //LOG
-
-                            push_free_cell(idx, state.id());
-                            //println!("Used a charged cell at index {}, to build a rocket", idx);
-                            ris = state.take_rocket();
-                        }
-                        //build failed, log the error and return none
-                        Err(err) => {
-                            //LOG
-                            debug_str=String::from("cannot create a rocket");
-
-                            error_str=err.to_string();
-
-                            result_str=String::from("No rocket available (cannot create a rocket)");
-                            //LOG
-                            push_charged_cell(idx, state.id());
-                            ris = None;
-                        }
-                    }
-                    //LOG
-                    log_internal_op!(
-                        self,
-                        "action"=>format!("(&mut *state).build_rocket({})", idx),
-                        "result"=>result_str,
-                        "error"=>error_str,
-                    );
-                    //LOG
-                } else {
-                    //LOG
-                    result_str=String::from("No rocket available (no free cell found)");
-                    //LOG
-                }
             }
         }
-
         //LOG
 
         log_orch_to_planet!(
@@ -311,7 +308,7 @@ impl PlanetAI for OneMillionCrabs {
                     self,
                     id,
                     "handle_explorer_msg()";
-                    "state"=>format!("{:?}",PlanetState::to_dummy(&state)),
+                    "state"=>format!("{:?}",PlanetState::to_dummy(state)),
                     "_generator"=>"&Generator",
                     "_combinator"=>"&Combinator",
                     "msg" => format!("{:?}", msg);
@@ -331,7 +328,7 @@ impl PlanetAI for OneMillionCrabs {
                     self,
                     id,
                     "handle_explorer_msg()";
-                    "state"=>format!("{:?}",PlanetState::to_dummy(&state)),
+                    "state"=>format!("{:?}",PlanetState::to_dummy(state)),
                     "_generator"=>"&Generator",
                     "_combinator"=>"&Combinator",
                     "msg" => format!("{:?}", msg);
@@ -354,7 +351,7 @@ impl PlanetAI for OneMillionCrabs {
                     self,
                     id,
                     "handle_explorer_msg()";
-                    "state"=>format!("{:?}",PlanetState::to_dummy(&state)),
+                    "state"=>format!("{:?}",PlanetState::to_dummy(state)),
                     "_generator"=>"&Generator",
                     "_combinator"=>"&Combinator",
                     "msg" => format!("{:?}", msg);
@@ -409,7 +406,7 @@ impl PlanetAI for OneMillionCrabs {
                     match generated_resource {
                         Ok(resource) => {
                             //LOG
-                            result_str=String::from(format!("Resource created: {:?}, using energy cell at index: {}",resource, cell_idx));
+                            result_str=format!("Resource created: {:?}, using energy cell at index: {}",resource, cell_idx);
                             //LOG
                             push_free_cell(cell_idx, state.id());
                             res_type = true;
@@ -433,7 +430,7 @@ impl PlanetAI for OneMillionCrabs {
                     self,
                     explorer_id,
                     "handle_explorer_msg()";
-                    "state"=>format!("{:?}",PlanetState::to_dummy(&state)),
+                    "state"=>format!("{:?}",PlanetState::to_dummy(state)),
                     "_generator"=>"&Generator",
                     "_combinator"=>"&Combinator",
                     "msg" => format!("{:?}", msg);
@@ -627,7 +624,7 @@ impl PlanetAI for OneMillionCrabs {
                     self,
                     explorer_id,
                     "handle_explorer_msg()";
-                    "state"=>format!("{:?}",PlanetState::to_dummy(&state)),
+                    "state"=>format!("{:?}",PlanetState::to_dummy(state)),
                     "_generator"=>"&Generator",
                     "_combinator"=>"&Combinator",
                     "msg" => appo;
@@ -776,12 +773,12 @@ mod stacks {
             Ok(mut vec) => {
                 vec.clear();
                 //LOG
-                result_str=result_str+"\nCHARGED_CELL_STACK initialized!";
+                result_str+="\nCHARGED_CELL_STACK initialized!";
                 //LOG
             }
             Err(err) => {
                 //LOG
-                result_str=result_str+"\nCHARGED_CELL_STACK not initialized!";
+                result_str+="\nCHARGED_CELL_STACK not initialized!";
                 LogEvent::self_directed(
                     Participant::new(ActorType::Planet, planet_id),
                     EventType::InternalPlanetAction,
@@ -1022,15 +1019,14 @@ mod stacks {
     #[allow(dead_code)]
     pub fn peek_charged_cell_index(planet_id: u32) -> Option<u32> {
         let charged_cell_stack = CHARGED_CELL_STACK.lock();
-        let res;
-        match charged_cell_stack {
+        let res= match charged_cell_stack {
             Ok(vec) => {
-                res = vec.last().copied();
+                vec.last().copied()
             }
             Err(err) => {
-                res = None;
+                None
             }
-        }
+        };
         res
     }
 }
