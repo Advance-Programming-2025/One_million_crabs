@@ -12,17 +12,15 @@ use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetTo
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use crossbeam_channel::{Receiver, Sender};
 
-use common_game::logging::EventType::{
-    MessageOrchestratorToPlanet, MessagePlanetToExplorer, MessagePlanetToOrchestrator,
-};
-use common_game::logging::{ActorType, Channel, EventType, LogEvent, Participant, Payload};
+
+use common_game::logging::{ActorType, Participant};
 use common_game::utils::ID;
 use stacks::{
     get_charged_cell_index, get_free_cell_index, initialize_free_cell_stack, push_charged_cell,
     push_free_cell,
 };
 
-use logging_utils::{log_fn_call, log_internal_op, log_message, payload, warning_payload, LOG_ACTORS_ACTIVITY, LoggableActor, get_receiver_id, get_sender_id, log_orch_to_planet, log_explorer_to_planet};
+use logging_utils::{log_fn_call, log_internal_op, LoggableActor, get_receiver_id, get_sender_id, log_orch_to_planet, log_explorer_to_planet};
 ///////////////////////////////////////////////////////////////////////////////////////////
 // CrabRave Constructor
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +124,7 @@ impl PlanetAI for OneMillionCrabs {
         sunray: Sunray,
     ) {
         //LOG
-        let mut result_str = String::new();
+        let mut result_str=String::new();
         //LOG
         if let Some(idx) = get_free_cell_index(state.id()) {
             state.cell_mut(idx as usize).charge(sunray);
@@ -172,7 +170,7 @@ impl PlanetAI for OneMillionCrabs {
         _combinator: &Combinator,
     ) -> Option<Rocket> {
         //if the planet can't build rockets, you're screwed
-        let mut result_str = String::new();
+        let result_str ;
 
         let mut ris = None;
         if !state.can_have_rocket() {
@@ -196,7 +194,6 @@ impl PlanetAI for OneMillionCrabs {
         //try to build a rocket if you have any energy left
         else {
             //LOG
-            let mut debug_str=String::new();
             let mut error_str=String::new();
             //LOG
 
@@ -205,7 +202,6 @@ impl PlanetAI for OneMillionCrabs {
                 match state.build_rocket(idx as usize) {
                     Ok(_) => {
                         //LOG
-                        debug_str=String::from("rocket created");
 
                         result_str=String::from("Using a rocket to destroy the asteroid");
                         //LOG
@@ -217,7 +213,6 @@ impl PlanetAI for OneMillionCrabs {
                     //build failed, log the error and return none
                     Err(err) => {
                         //LOG
-                        debug_str=String::from("cannot create a rocket");
 
                         error_str=err.to_string();
 
@@ -369,10 +364,9 @@ impl PlanetAI for OneMillionCrabs {
                 resource,
             } => {
                 //LOG
-                let mut result_str=String::new();
+                let result_str;
                 //LOG
                 let mut res = Some(PlanetToExplorer::GenerateResourceResponse { resource: None });
-                let mut res_type = false;
                 let requested_resource = resource;
                 // controllo se c'è una cella carica
 
@@ -409,7 +403,6 @@ impl PlanetAI for OneMillionCrabs {
                             result_str=format!("Resource created: {:?}, using energy cell at index: {}",resource, cell_idx);
                             //LOG
                             push_free_cell(cell_idx, state.id());
-                            res_type = true;
                             res = Some(PlanetToExplorer::GenerateResourceResponse {
                                 resource: Some(resource),
                             });
@@ -446,7 +439,7 @@ impl PlanetAI for OneMillionCrabs {
                 //renamed msg to resouce to be more consistent with generateresourcerequest
             } => {
                 //LOG
-                let mut result_str=String::new();
+                let result_str;
                 let appo=format!("{:?}", resource);
                 //LOG
 
@@ -719,7 +712,7 @@ pub const N_CELLS: usize = 5; //TODO è corretto un limite di 5?
 mod stacks {
     use crate::N_CELLS;
     use crate::planet::Participant;
-    use common_game::logging::{ActorType, Channel, EventType, LogEvent, Payload};
+    use common_game::logging::{ActorType, Channel, EventType, LogEvent};
     use std::sync::Mutex;
     use logging_utils::{log_internal_op, warning_payload};
 
@@ -732,7 +725,7 @@ mod stacks {
     pub fn initialize_free_cell_stack(planet_id: u32) {
         //initialize the free cell stack with all the possible indexes
         //LOG
-        let mut result_str=String::new();
+        let mut result_str;
         //LOG
 
         let free_cell_stack = FREE_CELL_STACK.lock();
@@ -807,7 +800,7 @@ mod stacks {
     /// or None if there are no available cells
     pub fn get_free_cell_index(planet_id: u32) -> Option<u32> {
         //LOG
-        let mut result_str=String::new();
+        let result_str;
         //LOG
         let free_cell_stack = FREE_CELL_STACK.lock();
         let res = match free_cell_stack {
@@ -863,7 +856,7 @@ mod stacks {
     /// or None if there are no available cells
     pub fn get_charged_cell_index(planet_id: u32) -> Option<u32> {
         //LOG
-        let mut result_str=String::new();
+        let result_str;
         //LOG
         let charged_cell_stack = CHARGED_CELL_STACK.lock();
         let res;
@@ -916,7 +909,7 @@ mod stacks {
     /// increasing the available space.
     pub fn push_free_cell(index: u32, planet_id: u32) {
         //LOG
-        let mut result_str=String::new();
+        let result_str;
         //LOG
         let free_cell_stack = FREE_CELL_STACK.lock();
 
@@ -966,7 +959,7 @@ mod stacks {
     /// no output without increasing the available space.
     pub fn push_charged_cell(index: u32, planet_id: u32) {
         //LOG
-        let mut result_str=String::new();
+        let result_str;
         //LOG
         let charged_cell_stack = CHARGED_CELL_STACK.lock();
         match charged_cell_stack {
@@ -1017,13 +1010,13 @@ mod stacks {
     /// Returns Some and the corresponding index or
     /// None if there are no charged cells.
     #[allow(dead_code)]
-    pub fn peek_charged_cell_index(planet_id: u32) -> Option<u32> {
+    pub fn peek_charged_cell_index(_planet_id: u32) -> Option<u32> {
         let charged_cell_stack = CHARGED_CELL_STACK.lock();
         match charged_cell_stack {
             Ok(vec) => {
                 vec.last().copied()
             }
-            Err(err) => {
+            Err(_err) => {
                 None
             }
         }
