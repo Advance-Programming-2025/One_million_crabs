@@ -661,7 +661,7 @@ impl PlanetAI for OneMillionCrabs {
             "_combinator"=>"&Combinator",
         );
         //LOG
-        todo!()
+        // todo!()
     }
 
     fn on_stop(&mut self, state: &PlanetState, _generator: &Generator, _combinator: &Combinator) {
@@ -674,7 +674,7 @@ impl PlanetAI for OneMillionCrabs {
             "_combinator"=>"&Combinator",
         );
         //LOG
-        todo!()
+        // todo!()
     }
 }
 
