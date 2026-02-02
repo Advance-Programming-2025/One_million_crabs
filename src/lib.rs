@@ -1,5 +1,5 @@
 pub mod planet;
-use planet::*;
+pub use planet::*;
 
 #[cfg(test)]
 mod tests {
