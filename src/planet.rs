@@ -860,7 +860,8 @@ impl PlanetAI for OneMillionCrabs {
         _combinator: &Combinator,
         _explorer_id: ID,
     ) {
-        todo!()
+        //TODO add logs here maybe,
+        //but nothing is supposed to happen
     }
 
     fn on_explorer_departure(
@@ -870,7 +871,8 @@ impl PlanetAI for OneMillionCrabs {
         _combinator: &Combinator,
         _explorer_id: ID,
     ) {
-        todo!()
+        //TODO add logs here maybe,
+        //but nothing is supposed to happen
     }
 
     fn on_start(&mut self, state: &PlanetState, _generator: &Generator, _combinator: &Combinator) {
