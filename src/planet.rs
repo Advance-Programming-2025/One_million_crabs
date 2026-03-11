@@ -12,16 +12,16 @@ use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetTo
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use crossbeam_channel::{Receiver, Sender};
 
-
-use common_game::logging::{ActorType, Participant};
+use common_game::logging::ActorType;
 use common_game::utils::ID;
 
-
-use logging_utils::{get_receiver_id, get_sender_id, log_explorer_to_planet, log_fn_call, log_internal_op, log_orch_to_planet, LoggableActor};
+use logging_utils::{
+    LoggableActor, get_receiver_id, get_sender_id, log_explorer_to_planet, log_fn_call,
+    log_internal_op, log_orch_to_planet,
+};
 ///////////////////////////////////////////////////////////////////////////////////////////
 // CrabRave Constructor
 ///////////////////////////////////////////////////////////////////////////////////////////
-
 
 //This function will be called by the Orchestrator
 pub fn create_planet(
@@ -83,11 +83,11 @@ pub fn create_planet(
 // PlanetAI
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct OneMillionCrabs{
+pub struct OneMillionCrabs {
     my_id: u32,
 }
 
-impl LoggableActor for OneMillionCrabs{
+impl LoggableActor for OneMillionCrabs {
     fn actor_type(&self) -> ActorType {
         ActorType::Planet
     }
@@ -108,7 +108,7 @@ impl OneMillionCrabs {
         );
         //LOG
         //initialize_free_cell_stack(planet_id);
-        Self{my_id:planet_id}
+        Self { my_id: planet_id }
     }
 }
 
@@ -121,7 +121,7 @@ impl PlanetAI for OneMillionCrabs {
         sunray: Sunray,
     ) {
         //LOG
-        let mut result_str=String::new();
+        let mut result_str = String::new();
         //LOG
         if state.charge_cell(sunray).is_none() {
             //LOG
@@ -129,7 +129,7 @@ impl PlanetAI for OneMillionCrabs {
                 self,
                 "action"=>"new cell charged",
             );
-            result_str= "New cell charged".to_string();
+            result_str = "New cell charged".to_string();
             //LOG
         } else {
             result_str.push_str("No free cell found");
@@ -163,13 +163,13 @@ impl PlanetAI for OneMillionCrabs {
         _combinator: &Combinator,
     ) -> Option<Rocket> {
         //if the planet can't build rockets, you're screwed
-        let mut result_str=String::new();
+        let mut result_str = String::new();
 
         let mut ris = None;
         if !state.can_have_rocket() {
             ris = None;
             //LOG
-            result_str=String::from("The planet cannot have a rocket");
+            result_str = String::from("The planet cannot have a rocket");
             //LOG
         }
         //LOG
@@ -337,7 +337,10 @@ impl PlanetAI for OneMillionCrabs {
                     match generated_resource {
                         Ok(resource) => {
                             //LOG
-                            result_str=format!("Resource created: {:?}, using energy cell at index: {}",resource, idx);
+                            result_str = format!(
+                                "Resource created: {:?}, using energy cell at index: {}",
+                                resource, idx
+                            );
                             //LOG
                             res = Some(PlanetToExplorer::GenerateResourceResponse {
                                 resource: Some(resource),
@@ -345,13 +348,13 @@ impl PlanetAI for OneMillionCrabs {
                         }
                         Err(err) => {
                             //LOG
-                            result_str=format!("cannot create resource {:?}. Error: {}", resource, err);
+                            result_str =
+                                format!("cannot create resource {:?}. Error: {}", resource, err);
                             //LOG
                         }
                     }
-                }
-                else{
-                    result_str=String::from("No energy cell available");
+                } else {
+                    result_str = String::from("No energy cell available");
                 }
                 //LOG
                 log_explorer_to_planet!(
@@ -375,13 +378,13 @@ impl PlanetAI for OneMillionCrabs {
             } => {
                 //LOG
                 let result_str;
-                let appo=format!("{:?}", resource);
+                let appo = format!("{:?}", resource);
                 //LOG
 
                 let res;
 
                 // searching the index of the first free cell
-                if let Some((cell, cell_idx)) = state.full_cell() {
+                if let Some((cell, _)) = state.full_cell() {
                     //LOG
                     //LOG
                     let complex_resource: Result<
@@ -489,7 +492,7 @@ impl PlanetAI for OneMillionCrabs {
                     match complex_resource {
                         Ok(resource) => {
                             //LOG
-                            result_str=String::from("Complex resource created");
+                            result_str = String::from("Complex resource created");
                             //LOG
 
                             res = Some(PlanetToExplorer::CombineResourceResponse {
@@ -498,7 +501,8 @@ impl PlanetAI for OneMillionCrabs {
                         }
                         Err(err) => {
                             //LOG
-                            result_str=format!("Complex resource not created. Error: {:?}", err.2);
+                            result_str =
+                                format!("Complex resource not created. Error: {:?}", err.2);
                             //LOG
 
                             res = Some(PlanetToExplorer::CombineResourceResponse {
@@ -508,7 +512,7 @@ impl PlanetAI for OneMillionCrabs {
                     }
                 } else {
                     //LOG
-                    result_str=String::from("No energy cell available");
+                    result_str = String::from("No energy cell available");
                     //LOG
 
                     let (ret1, ret2) = match resource {
