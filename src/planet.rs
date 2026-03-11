@@ -12,19 +12,16 @@ use common_game::protocols::orchestrator_planet::{OrchestratorToPlanet, PlanetTo
 use common_game::protocols::planet_explorer::{ExplorerToPlanet, PlanetToExplorer};
 use crossbeam_channel::{Receiver, Sender};
 
-
-use common_game::logging::{ActorType, Participant};
+use common_game::logging::ActorType;
 use common_game::utils::ID;
-use stacks::{
-    get_charged_cell_index, get_free_cell_index, initialize_free_cell_stack, push_charged_cell,
-    push_free_cell,
-};
 
-use logging_utils::{log_fn_call, log_internal_op, LoggableActor, get_receiver_id, get_sender_id, log_orch_to_planet, log_explorer_to_planet};
+use logging_utils::{
+    LoggableActor, get_receiver_id, get_sender_id, log_explorer_to_planet, log_fn_call,
+    log_internal_op, log_orch_to_planet,
+};
 ///////////////////////////////////////////////////////////////////////////////////////////
 // CrabRave Constructor
 ///////////////////////////////////////////////////////////////////////////////////////////
-
 
 //This function will be called by the Orchestrator
 pub fn create_planet(
@@ -86,11 +83,11 @@ pub fn create_planet(
 // PlanetAI
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-pub struct OneMillionCrabs{
+pub struct OneMillionCrabs {
     my_id: u32,
 }
 
-impl LoggableActor for OneMillionCrabs{
+impl LoggableActor for OneMillionCrabs {
     fn actor_type(&self) -> ActorType {
         ActorType::Planet
     }
@@ -110,8 +107,8 @@ impl OneMillionCrabs {
             planet_id,
         );
         //LOG
-        initialize_free_cell_stack(planet_id);
-        Self{my_id:planet_id}
+        //initialize_free_cell_stack(planet_id);
+        Self { my_id: planet_id }
     }
 }
 
@@ -124,19 +121,15 @@ impl PlanetAI for OneMillionCrabs {
         sunray: Sunray,
     ) {
         //LOG
-        let mut result_str=String::new();
+        let mut result_str = String::new();
         //LOG
-        if let Some(idx) = get_free_cell_index(state.id()) {
-            state.cell_mut(idx as usize).charge(sunray);
-            push_charged_cell(idx, state.id());
-
+        if state.charge_cell(sunray).is_none() {
             //LOG
             log_internal_op!(
                 self,
                 "action"=>"new cell charged",
-                "index"=>idx,
             );
-            result_str=format!("New cell charged: {}", idx);
+            result_str = "New cell charged".to_string();
             //LOG
         } else {
             result_str.push_str("No free cell found");
@@ -170,71 +163,14 @@ impl PlanetAI for OneMillionCrabs {
         _combinator: &Combinator,
     ) -> Option<Rocket> {
         //if the planet can't build rockets, you're screwed
-        let result_str ;
+        let mut result_str = String::new();
 
         let mut ris = None;
         if !state.can_have_rocket() {
             ris = None;
             //LOG
-            result_str=String::from("The planet cannot have a rocket");
+            result_str = String::from("The planet cannot have a rocket");
             //LOG
-        }
-        //if you've already got a rocket ready, use it!
-        else if state.has_rocket() {
-            //LOG
-            result_str=String::from("Using a rocket to destroy the asteroid");
-
-            log_internal_op!(
-                self,
-                "action"=>"ris=(&mut *state).take_rocket()",
-            );
-            //LOG
-            ris = state.take_rocket();
-        }
-        //try to build a rocket if you have any energy left
-        else {
-            //LOG
-            let mut error_str=String::new();
-            //LOG
-
-            if let Some(idx) = get_charged_cell_index(state.id()) {
-
-                match state.build_rocket(idx as usize) {
-                    Ok(_) => {
-                        //LOG
-
-                        result_str=String::from("Using a rocket to destroy the asteroid");
-                        //LOG
-
-                        push_free_cell(idx, state.id());
-                        //println!("Used a charged cell at index {}, to build a rocket", idx);
-                        ris = state.take_rocket();
-                    }
-                    //build failed, log the error and return none
-                    Err(err) => {
-                        //LOG
-
-                        error_str=err.to_string();
-
-                        result_str=String::from("No rocket available (cannot create a rocket)");
-                        //LOG
-                        push_charged_cell(idx, state.id());
-                        ris = None;
-                    }
-                }
-                //LOG
-                log_internal_op!(
-                    self,
-                    "action"=>format!("(&mut *state).build_rocket({})", idx),
-                    "result"=>result_str,
-                    "error"=>error_str,
-                );
-                //LOG
-            } else {
-                //LOG
-                result_str=String::from("No rocket available (no free cell found)");
-                //LOG
-            }
         }
         //LOG
 
@@ -281,6 +217,11 @@ impl PlanetAI for OneMillionCrabs {
         msg: ExplorerToPlanet,
     ) -> Option<PlanetToExplorer> {
         //LOG
+        log_internal_op!(
+            self,
+            "fn"=>"handle_explorer_msg()",
+            "msg"=>format!("{:?}",msg),
+        );
         //LOG
 
         match msg {
@@ -370,13 +311,9 @@ impl PlanetAI for OneMillionCrabs {
                 let requested_resource = resource;
                 // controllo se c'è una cella carica
 
-                if let Some(cell_idx) = get_charged_cell_index(state.id()) {
+                if let Some((cell, idx)) = state.full_cell() {
                     //LOG
                     //LOG
-
-                    // se c'è una cella carica
-                    // ottengo la cella da passare al generator
-                    let cell = state.cell_mut(cell_idx as usize);
                     // pattern matching per generare la risorsa corretta
                     let generated_resource = match requested_resource {
                         BasicResourceType::Carbon => {
@@ -400,23 +337,24 @@ impl PlanetAI for OneMillionCrabs {
                     match generated_resource {
                         Ok(resource) => {
                             //LOG
-                            result_str=format!("Resource created: {:?}, using energy cell at index: {}",resource, cell_idx);
+                            result_str = format!(
+                                "Resource created: {:?}, using energy cell at index: {}",
+                                resource, idx
+                            );
                             //LOG
-                            push_free_cell(cell_idx, state.id());
                             res = Some(PlanetToExplorer::GenerateResourceResponse {
                                 resource: Some(resource),
                             });
                         }
                         Err(err) => {
                             //LOG
-                            result_str=format!("cannot create resource {:?}. Error: {}", resource, err);
+                            result_str =
+                                format!("cannot create resource {:?}. Error: {}", resource, err);
                             //LOG
-                            push_charged_cell(cell_idx, state.id());
                         }
                     }
-                }
-                else{
-                    result_str=String::from("No energy cell available");
+                } else {
+                    result_str = String::from("No energy cell available");
                 }
                 //LOG
                 log_explorer_to_planet!(
@@ -440,17 +378,15 @@ impl PlanetAI for OneMillionCrabs {
             } => {
                 //LOG
                 let result_str;
-                let appo=format!("{:?}", resource);
+                let appo = format!("{:?}", resource);
                 //LOG
 
                 let res;
 
                 // searching the index of the first free cell
-                if let Some(cell_idx) = get_charged_cell_index(state.id()) {
+                if let Some((cell, _)) = state.full_cell() {
                     //LOG
                     //LOG
-
-                    let cell = state.cell_mut(cell_idx as usize);
                     let complex_resource: Result<
                         ComplexResource,
                         (String, GenericResource, GenericResource),
@@ -556,18 +492,17 @@ impl PlanetAI for OneMillionCrabs {
                     match complex_resource {
                         Ok(resource) => {
                             //LOG
-                            result_str=String::from("Complex resource created");
+                            result_str = String::from("Complex resource created");
                             //LOG
 
-                            push_free_cell(cell_idx, state.id());
                             res = Some(PlanetToExplorer::CombineResourceResponse {
                                 complex_response: Ok(resource),
                             });
                         }
                         Err(err) => {
-                            push_charged_cell(cell_idx, state.id());
                             //LOG
-                            result_str=format!("Complex resource not created. Error: {:?}", err.2);
+                            result_str =
+                                format!("Complex resource not created. Error: {:?}", err.2);
                             //LOG
 
                             res = Some(PlanetToExplorer::CombineResourceResponse {
@@ -577,7 +512,7 @@ impl PlanetAI for OneMillionCrabs {
                     }
                 } else {
                     //LOG
-                    result_str=String::from("No energy cell available");
+                    result_str = String::from("No energy cell available");
                     //LOG
 
                     let (ret1, ret2) = match resource {
@@ -705,320 +640,4 @@ impl ToString2 for ComplexResourceType {
     }
 }
 
-pub const N_CELLS: usize = 5; //TODO è corretto un limite di 5?
-
-/// Module used to implement an energy cell management system based on a stack.
-/// Provides O(1) lookups, charges and discharges.
-mod stacks {
-    use crate::N_CELLS;
-    use crate::planet::Participant;
-    use common_game::logging::{ActorType, Channel, EventType, LogEvent};
-    use std::sync::Mutex;
-    use logging_utils::{log_internal_op, warning_payload};
-
-    pub(crate) static FREE_CELL_STACK: Mutex<Vec<u32>> = Mutex::new(Vec::new());
-    pub(crate) static CHARGED_CELL_STACK: Mutex<Vec<u32>> = Mutex::new(Vec::new());
-
-    /// Initializes the internal vectors used to handle the stack.
-    /// MUST be called everytime the planet is created, for example at
-    /// the start of PlanetAI.
-    pub fn initialize_free_cell_stack(planet_id: u32) {
-        //initialize the free cell stack with all the possible indexes
-        //LOG
-        let mut result_str;
-        //LOG
-
-        let free_cell_stack = FREE_CELL_STACK.lock();
-        match free_cell_stack {
-            Ok(mut vec) => {
-                //empty previous values in case of reset
-                vec.clear();
-                for i in 0..N_CELLS {
-                    vec.push(i as u32);
-                }
-                //put the indexes in the correct orientation
-                vec.reverse();
-
-                //LOG
-                result_str= "FREE_CELL_STACK initialized!".to_string();
-                //LOG
-            }
-            Err(err) => {
-                //LOG
-                result_str="FREE_CELL_STACK not initialized!".to_string();
-                LogEvent::self_directed(
-                    Participant::new(ActorType::Planet, planet_id),
-                    EventType::InternalPlanetAction,
-                    Channel::Warning,
-                    warning_payload!(
-                        "FREE_CELL_STACK not initialized!",
-                        err,
-                        "initialize_free_cell_stack()";
-                    )
-                ).emit()
-                //LOG
-            }
-        }
-
-        //same thing as above but we just make sure that the vector is empty
-        let charged_cell_stack = CHARGED_CELL_STACK.lock();
-        match charged_cell_stack {
-            Ok(mut vec) => {
-                vec.clear();
-                //LOG
-                result_str+="\nCHARGED_CELL_STACK initialized!";
-                //LOG
-            }
-            Err(err) => {
-                //LOG
-                result_str+="\nCHARGED_CELL_STACK not initialized!";
-                LogEvent::self_directed(
-                    Participant::new(ActorType::Planet, planet_id),
-                    EventType::InternalPlanetAction,
-                    Channel::Warning,
-                    warning_payload!(
-                        "CHARGED_CELL_STACK not initialized!",
-                        err,
-                        "initialize_free_cell_stack()";
-                    )
-                ).emit()
-                //LOG
-            }
-        }
-        //LOG
-        log_internal_op!(dir
-            ActorType::Planet,
-            planet_id,
-            "action"=>"initialize_free_cell_stack()",
-            "result"=>result_str
-        );
-        //LOG
-    }
-
-    /// Pulls out a free cell from the corresponding stack.
-    /// returns Some and the correspnding index to charge
-    /// or None if there are no available cells
-    pub fn get_free_cell_index(planet_id: u32) -> Option<u32> {
-        //LOG
-        let result_str;
-        //LOG
-        let free_cell_stack = FREE_CELL_STACK.lock();
-        let res = match free_cell_stack {
-            Ok(mut vec) => {
-                let appo= vec.pop();
-                match appo.as_ref() {
-                    Some(index) => {
-                        //LOG
-                        result_str=format!("Free cell index {}", index);
-                        //LOG
-                    }
-                    None => {
-                        //LOG
-                        result_str= "No free cell available".to_string();
-                        //LOG
-                    }
-                }
-                appo
-
-            }
-            Err(err) => {
-                //LOG
-                result_str= "Cannot get free_cell index".to_string();
-                LogEvent::self_directed(
-                    Participant::new(ActorType::Planet, planet_id),
-                    EventType::InternalPlanetAction,
-                    Channel::Warning,
-                    warning_payload!(
-                        "Cannot get free_cell index",
-                        err,
-                        "get_free_cell_index()";
-                    )
-                ).emit();
-                //LOG
-                None
-            }
-        };
-
-        //LOG
-        log_internal_op!(dir
-            ActorType::Planet,
-            planet_id,
-            "action"=>"get_free_cell_index()",
-            "result"=>result_str,
-        );
-        //LOG
-
-        res
-    }
-
-    /// Pulls out a charged cell from the corresponding stack.
-    /// returns Some and the correspnding index to discharge
-    /// or None if there are no available cells
-    pub fn get_charged_cell_index(planet_id: u32) -> Option<u32> {
-        //LOG
-        let result_str;
-        //LOG
-        let charged_cell_stack = CHARGED_CELL_STACK.lock();
-        let res;
-        match charged_cell_stack {
-            Ok(mut vec) => {
-                res = vec.pop();
-                //LOG
-                match res.as_ref() {
-                    Some(index) => {
-                        result_str=format!("Charged cell index {}", index);
-                    }
-                    None => {
-                        result_str= "No charged cell available".to_string();
-                    }
-                }
-                //LOG
-            }
-            Err(err) => {
-                //LOG
-                result_str= "Cannot get charged_cell index".to_string();
-                LogEvent::self_directed(
-                    Participant::new(ActorType::Planet, planet_id),
-                    EventType::InternalPlanetAction,
-                    Channel::Warning,
-                    warning_payload!(
-                        "Cannot get charged_cell index",
-                        err,
-                        "get_charged_cell_index()";
-                    )
-                ).emit();
-                //LOG
-                res = None;
-            }
-        }
-
-        //LOG
-        log_internal_op!(dir
-            ActorType::Planet,
-            planet_id,
-            "action"=>"get_charged_cell_index()",
-            "result"=>result_str,
-        );
-        //LOG
-        res
-    }
-
-    /// Pushes a free energy cell back into the stack.
-    /// The user must verify that there is available space,
-    /// as the function will otherwise give no output without
-    /// increasing the available space.
-    pub fn push_free_cell(index: u32, planet_id: u32) {
-        //LOG
-        let result_str;
-        //LOG
-        let free_cell_stack = FREE_CELL_STACK.lock();
-
-        match free_cell_stack {
-            Ok(mut vec) => {
-                if vec.len() < N_CELLS {
-                    vec.push(index);
-                    //LOG
-                    result_str=format!("Pushed new free cell with index {}", index);
-                    //LOG
-                } else {
-                    //LOG
-                    result_str="Number of free cells is already at its maximum, cannot add another free cell".to_string();
-                    //LOG
-                }
-            }
-            Err(err) => {
-                //LOG
-                result_str="Cannot push a new free cell".to_string();
-                LogEvent::self_directed(
-                    Participant::new(ActorType::Planet, planet_id),
-                    EventType::InternalPlanetAction,
-                    Channel::Warning,
-                    warning_payload!(
-                        "Cannot push a new free cell",
-                        err,
-                        "push_free_cell()";
-                    )
-                ).emit();
-                //LOG
-            }
-        }
-        //LOG
-        log_internal_op!(dir
-            ActorType::Planet,
-            planet_id,
-            "action"=>"push_free_cell()",
-            "index"=>index,
-            "result"=>result_str,
-        );
-        //LOG
-    }
-
-    /// Pushes a free energy cell back into the stack.
-    /// The user must verify that the maximum size hasn't already
-    /// been reached, as the function will otherwise give
-    /// no output without increasing the available space.
-    pub fn push_charged_cell(index: u32, planet_id: u32) {
-        //LOG
-        let result_str;
-        //LOG
-        let charged_cell_stack = CHARGED_CELL_STACK.lock();
-        match charged_cell_stack {
-            Ok(mut vec) => {
-                if vec.len() < N_CELLS {
-                    vec.push(index);
-                    //LOG
-                    result_str=format!("Pushed new charged cell with index {}", index);
-                    //LOG
-                } else {
-                    //LOG
-                    result_str="Number of charged cells is already at its maximum, cannot add another charged cell".to_string();
-                    //LOG
-                }
-            }
-            Err(err) => {
-                //LOG
-                result_str="Cannot push a new charged cell".to_string();
-                LogEvent::self_directed(
-                    Participant::new(ActorType::Planet, planet_id),
-                    EventType::InternalPlanetAction,
-                    Channel::Warning,
-                    warning_payload!(
-                        "Cannot push a new charged cell",
-                        err,
-                        "push_charged_cell()";
-                    )
-                ).emit();
-                //LOG
-            }
-        }
-        //LOG
-        log_internal_op!(dir
-            ActorType::Planet,
-            planet_id,
-            "action"=>"push_charged_cell()",
-            "index"=>index,
-            "result"=>result_str,
-        );
-        //LOG
-    }
-
-    // TODO: this is a legacy function,
-    // TODO:  we should remove it.
-
-    /// checks wether there is an available charged cell,
-    /// without actually consuming the value.
-    /// Returns Some and the corresponding index or
-    /// None if there are no charged cells.
-    #[allow(dead_code)]
-    pub fn peek_charged_cell_index(_planet_id: u32) -> Option<u32> {
-        let charged_cell_stack = CHARGED_CELL_STACK.lock();
-        match charged_cell_stack {
-            Ok(vec) => {
-                vec.last().copied()
-            }
-            Err(_err) => {
-                None
-            }
-        }
-    }
-}
+pub const N_CELLS: usize = 5;
