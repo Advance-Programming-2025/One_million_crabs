@@ -10,7 +10,7 @@ mod tests {
     #[test]
 
     fn t01_planet_initialization() -> Result<(), String> {
-        println!("+++++ Test planet initialization +++++");
+        //println!("+++++ Test planet initialization +++++");
         let (planet_sender, _orch_receiver): (
             Sender<PlanetToOrchestrator>,
             Receiver<PlanetToOrchestrator>,

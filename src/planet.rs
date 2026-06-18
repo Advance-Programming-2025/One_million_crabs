@@ -299,7 +299,6 @@ impl PlanetAI for OneMillionCrabs {
                 })
             }
 
-            //TODO use explorer_id to send the gen resource to correct Explorer
             ExplorerToPlanet::GenerateResourceRequest {
                 explorer_id,
                 resource,
@@ -370,7 +369,7 @@ impl PlanetAI for OneMillionCrabs {
                 //LOG
                 res
             }
-            //TODO use explorer_id to send the gen resource to correct Explorer
+
             ExplorerToPlanet::CombineResourceRequest {
                 explorer_id,
                 msg: resource,
@@ -572,7 +571,11 @@ impl PlanetAI for OneMillionCrabs {
         _combinator: &Combinator,
         _explorer_id: ID,
     ) {
-        //TODO
+        log_explorer_to_planet!(
+            self,
+            _explorer_id,
+            "on_explorer_arrival()"
+        );
     }
 
     fn on_explorer_departure(
@@ -582,7 +585,11 @@ impl PlanetAI for OneMillionCrabs {
         _combinator: &Combinator,
         _explorer_id: ID,
     ) {
-        //TODO
+        log_explorer_to_planet!(
+            self,
+            _explorer_id,
+            "on_explorer_departure()"
+        );
     }
 
     fn on_start(&mut self, state: &PlanetState, _generator: &Generator, _combinator: &Combinator) {
@@ -596,7 +603,6 @@ impl PlanetAI for OneMillionCrabs {
             "_combinator"=>"&Combinator",
         );
         //LOG
-        // todo!()
     }
 
     fn on_stop(&mut self, state: &PlanetState, _generator: &Generator, _combinator: &Combinator) {
@@ -609,7 +615,6 @@ impl PlanetAI for OneMillionCrabs {
             "_combinator"=>"&Combinator",
         );
         //LOG
-        // todo!()
     }
 }
 
